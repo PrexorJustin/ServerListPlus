@@ -30,51 +30,15 @@ Folders as tabs, search with filters, sorting, pinning, notes, tags and playtime
 
 ## ✨ Features
 
-<table>
-<tr>
-<td width="50%" valign="top">
-
-### 🗂️ Organize
-- **Tabs for folders**: "All" plus one tab per folder, as a row above the list or as a sidebar.
-  A server can be in any number of folders; drag it onto a tab to put it there.
-- **Smart folders**: save a search as a folder that fills itself, e.g. `tag:pvp ping:<80`.
-- **Pinning**: keep servers at the top of a tab, also while sorting automatically.
-- **Dividers**: titled, colored separators to group servers within a tab.
-- **Hiding**: keep servers out of "All" without deleting them; they wait in a folded section.
-
-</td>
-<td width="50%" valign="top">
-
-### 🔎 Find
-- **Search and filters**: by name, address, MOTD and notes, plus `tag:`, `folder:`, `note:`,
-  `has:`, `ping:`, `players:`, `played:`, `last:`, `domain:` and `is:`. See [Search](#-search).
-- **Sorting**: manually by drag and drop, or by name, ping, players or last played.
-- **Direct Connection**: a live preview of the typed server and the addresses you joined last.
-- **Auto refresh**: re-ping the shown servers every few seconds, without the list flickering.
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-### 📝 Remember
-- **Notes**: per server notes, marked by a symbol in the list that shows them on hover and opens
-  them on click, in a card next to the list. Optionally shown in the corner when you join the
-  server, e.g. for coordinates.
-- **Tags and history**: per server tags; last join and total playtime per address,
-  shown next to the name, as a clock symbol, on hover or not at all.
-
-</td>
-<td width="50%" valign="top">
-
-### 🎨 Style
-- **Colored names**: MiniMessage tags in server names, e.g.
-  `<gradient:#ff5555:#ffaa00>Hypixel</gradient> <gray>Lobby`.
-- **Looks**: tab colors and symbols, background gradients or your own pictures per tab.
-
-</td>
-</tr>
-</table>
+- **Folders as tabs**: "All" plus one tab per folder, as a row or a sidebar. Smart folders fill
+  themselves from a search like `tag:pvp ping:<80`.
+- **Search and sorting**: filters for tags, folders, notes, ping, players and playtime (see
+  [Search](#-search)); sorting by name, ping, players or last played, or by hand.
+- **Organize in bulk**: select several servers to move them, pin or hide them or put them into
+  folders at once. Dividers group servers within a tab.
+- **Notes, tags and playtime** per server, with an optional reminder of the notes when you join.
+- **Direct Connection preview** of the typed server, and auto refresh of the shown servers.
+- **Style**: MiniMessage colors in server names, tab colors and symbols, backgrounds per tab.
 
 ### 📸 Screenshots
 
@@ -194,6 +158,12 @@ your Minecraft version and loader. Nothing but that request is sent; turn it off
 Bug reports, ideas and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) explains
 how to build, test and change the mod; [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains
 how it is put together.
+
+Thanks to everyone who has helped so far:
+
+<a href="https://github.com/PrexorJustin/ServerListPlus/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=PrexorJustin/ServerListPlus" alt="Contributors" height="36">
+</a>
 
 ## 📄 License
 

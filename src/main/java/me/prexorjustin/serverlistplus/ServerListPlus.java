@@ -22,7 +22,7 @@ import java.io.IOException;
 public final class ServerListPlus {
     public static final String MOD_ID = "serverlistplus";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-    public static final String VERSION = /*$ mod_version*/ "1.1.1";
+    public static final String VERSION = /*$ mod_version*/ "1.2.0";
     public static final String MINECRAFT = /*$ minecraft*/ "26.3";
 
     private static JsonStore jsonStore;
