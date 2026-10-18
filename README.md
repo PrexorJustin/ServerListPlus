@@ -8,6 +8,7 @@ Folders as tabs, search with filters, sorting, pinning, notes, tags and playtime
 [![Available on Modrinth][badge-modrinth]][modrinth]
 [![Available on CurseForge][badge-curseforge]][curseforge]
 [![Available on GitHub][badge-github]][releases]
+[![Chat with us on Discord][badge-discord]][discord]
 
 [![Modrinth downloads](https://img.shields.io/modrinth/dt/lEnmW6v6?logo=modrinth&label=Modrinth&color=1bd96a&style=flat-square)][modrinth]
 [![CurseForge downloads](https://img.shields.io/curseforge/dt/1744778?logo=curseforge&label=CurseForge&color=f16436&style=flat-square)][curseforge]
@@ -172,6 +173,8 @@ Released under the [MIT License](LICENSE).
 [modrinth]: https://modrinth.com/mod/lEnmW6v6
 [curseforge]: https://www.curseforge.com/minecraft/mc-mods/serverlistplus
 [releases]: https://github.com/PrexorJustin/ServerListPlus/releases
+[discord]: https://discord.gg/HxpF5Ka9wT
 [badge-modrinth]: https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/modrinth_vector.svg
 [badge-curseforge]: https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/curseforge_vector.svg
 [badge-github]: https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/github_vector.svg
+[badge-discord]: https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/social/discord-plural_vector.svg
