@@ -28,6 +28,29 @@ public final class Gfx {
         this.graphics = graphics;
     }
 
+    /** For vanilla drawing code that takes the graphics itself. */
+    public GuiGraphicsExtractor raw() {
+        return graphics;
+    }
+
+    /** Moves everything drawn until {@link #pop()} by {@code dx}, {@code dy}. */
+    public void push(int dx, int dy) {
+        //? if >=1.21.6 {
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(dx, dy);
+        //?} else {
+        /*graphics.pose().pushPose();
+        graphics.pose().translate(dx, dy, 0);
+        *///?}
+    }
+
+    public void pop() {
+        //? if >=1.21.6 {
+        graphics.pose().popMatrix();
+        //?} else
+        /*graphics.pose().popPose();*/
+    }
+
     public void fill(int x1, int y1, int x2, int y2, int color) {
         graphics.fill(x1, y1, x2, y2, color);
     }

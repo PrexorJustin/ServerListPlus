@@ -116,9 +116,13 @@ Folders as tabs, search with filters, sorting, pinning, notes, tags and playtime
 | Read or edit a server's notes | Hover or click the note symbol next to its name |
 | Add a divider | Right click a server → **Insert divider above** |
 | Search | Click the magnifier or press <kbd>Ctrl</kbd> + <kbd>F</kbd> |
-| Change sorting | Click the arrows next to the search |
+| Change sorting | Click the gear → **Sort** |
 | Move the selected server | Drag it, or <kbd>Shift</kbd> + <kbd>↑</kbd>/<kbd>↓</kbd> (also across dividers) |
-| Settings | Click the gear: details display, auto refresh, tab layout |
+| Select several servers | <kbd>Shift</kbd> + click for a range, <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + click to add or remove one |
+| Move several servers | Drag one of the selected servers, or onto a tab to put them all into that folder |
+| Put several servers into folders, pin or hide them | Right click one of the selected servers |
+| Reorder tabs | Drag a tab between the others |
+| Settings | Click the gear: sorting, details display, auto refresh, tab layout |
 
 > [!NOTE]
 > A server named `Friends/Survival SMP` is put into the folder "Friends" (created if needed)

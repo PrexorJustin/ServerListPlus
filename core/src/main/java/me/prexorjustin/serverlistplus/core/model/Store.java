@@ -104,6 +104,21 @@ public final class Store {
         }
     }
 
+    /**
+     * Moves a folder to just before the folder at {@code index} of the current order, or to the
+     * end for {@code index = folders().size()}: where it was dropped between the tabs.
+     */
+    public void moveFolderTo(String id, int index) {
+        for (int i = 0; i < folders.size(); i++) {
+            if (!folders.get(i).id().equals(id)) continue;
+            Folder folder = folders.remove(i);
+            // Everything after the old place moved up by one
+            int target = index > i ? index - 1 : index;
+            folders.add(Math.clamp(target, 0, folders.size()), folder);
+            return;
+        }
+    }
+
     /** Finds a folder by name, ignoring case. */
     public Optional<Folder> folderNamed(String name) {
         return folders.stream().filter(folder -> folder.name().equalsIgnoreCase(name)).findFirst();

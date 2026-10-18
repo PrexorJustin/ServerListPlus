@@ -15,6 +15,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.multiplayer.ServerSelectionList;
+import net.minecraft.client.multiplayer.ServerData;
 
 import java.util.List;
 
@@ -28,9 +29,14 @@ import java.util.List;
 public final class ServerListUi implements UiContext {
     /** Space reserved above the server list for the tab row. */
     public static final int TAB_ROW = 24;
+    /** Space at the top of the sidebar for the header controls. */
+    private static final int SIDEBAR_HEADER = 2 + 20 + 4;
     private static final int MARGIN = 6;
     /** Narrowest list next to the docked info card: rows of 230 instead of vanilla's 305 (see ServerSelectionListMixin). */
     private static final int MIN_DOCKED_LIST_WIDTH = 260;
+    private static final int VANILLA_ROW_WIDTH = 305;
+    /** Room a row leaves at the sides of the list for the scroll bar. */
+    public static final int ROW_SIDE_ROOM = 30;
 
     private final Screen screen;
     private final MultiplayerScreenHook hook;
@@ -46,6 +52,9 @@ public final class ServerListUi implements UiContext {
 
     private ContextMenu menu;
     private AbstractWidget focusAfterClick;
+    private final ServerSelection selection = new ServerSelection();
+    /** Pressed one of several selected servers: unless it becomes a drag, only that one stays selected. */
+    private ServerData selectOnlyOnRelease;
 
     /** Where vanilla put the list, before making room for the tabs; width 0 until known. */
     private int listX;
@@ -103,6 +112,25 @@ public final class ServerListUi implements UiContext {
         header.showTooltips(false);
     }
 
+    @Override
+    public boolean menuOpen() {
+        return menu != null;
+    }
+
+    @Override
+    public ServerSelection selection() {
+        return selection;
+    }
+
+    public boolean isMultiSelected(ServerData server) {
+        return selection.contains(server);
+    }
+
+    /** Vanilla's selected row changed. */
+    public void selectedChanged() {
+        selection.selectedChanged(list());
+    }
+
     private void closeMenu() {
         if (menu == null) return;
         hook.serverlistplus$remove(menu);
@@ -127,27 +155,39 @@ public final class ServerListUi implements UiContext {
     }
 
     /**
-     * The tab row (or only the header controls, with the sidebar) above the list; the sidebar,
-     * if shown, to the left of it, and an open info card to the right of it when there is room.
+     * The tab row above the list, or the sidebar on its left with the header controls at its top, and an open info card to the right of it when there is room.
      * Can be repeated, e.g. when tab names change.
      */
     @Override
     public void relayout() {
         if (listWidth == 0) return;
-        int top = listY + TAB_ROW;
-        int height = listHeight - TAB_ROW;
         int sidebarWidth = tabs.chooseLayout(listWidth, MARGIN);
-        if (sidebarWidth > 0) tabs.placeSidebar(listX + MARGIN, top, height);
-        int x = listX + sidebarWidth;
-        int width = listWidth - sidebarWidth;
+        boolean shown = !wallpaper.isActive();
+        // The sidebar carries the header controls, so only the tab row and the wallpaper toolbar need room above the list
+        int tabRow = sidebarWidth > 0 && shown ? 0 : TAB_ROW;
+        int top = listY + tabRow;
+        int height = listHeight - tabRow;
+        if (sidebarWidth > 0) tabs.placeSidebar(listX + MARGIN, top + SIDEBAR_HEADER, height - SIDEBAR_HEADER, top, MARGIN);
+        // The room for the rows: right of the sidebar, left of a docked card
+        int roomX = listX + sidebarWidth;
+        int roomWidth = listWidth - sidebarWidth;
         InfoCardController.Dock dock = null;
         if (infoCard.isOpen()) {
-            int cardWidth = Math.min(ServerInfoPanel.WIDTH, width - MIN_DOCKED_LIST_WIDTH - 2 * MARGIN);
+            int cardWidth = Math.min(ServerInfoPanel.WIDTH, roomWidth - MIN_DOCKED_LIST_WIDTH - 2 * MARGIN);
             if (cardWidth >= ServerInfoPanel.MIN_WIDTH) {
-                width -= cardWidth + 2 * MARGIN;
-                // From the tab row down to the end of the list; the tab row stays left of it
-                dock = new InfoCardController.Dock(x + width + MARGIN, listY + 2, cardWidth, listHeight - 2);
+                roomWidth -= cardWidth + 2 * MARGIN;
+                // From the tab row, if any, down to the end of the list; the tab row stays left of it
+                dock = new InfoCardController.Dock(roomX + roomWidth + MARGIN, listY + 2, cardWidth, listHeight - 2);
             }
+        }
+        // The list keeps its left edge, so the sidebar sits on its background and the rows stay
+        // centered under the title. Only when centered rows would run into the sidebar does the
+        // list start next to it.
+        int x = listX;
+        int width = roomX + roomWidth - listX;
+        if (sidebarWidth > 0 && x + (width - rowWidth(width)) / 2 < roomX) {
+            x = roomX;
+            width = roomWidth;
         }
         ServerSelectionList list = list();
         if (list.getX() != x || list.getY() != top || list.getWidth() != width || list.getHeight() != height) {
@@ -161,12 +201,21 @@ public final class ServerListUi implements UiContext {
         }
 
         int rowY = listY + 2;
-        boolean shown = !wallpaper.isActive();
         int rowRight = dock != null ? dock.x() - MARGIN : screen.width - MARGIN;
-        int controls = header.layout(MARGIN, rowRight, rowY, shown);
-        tabs.placeRow(MARGIN, rowY, controls - MARGIN);
+        if (sidebarWidth > 0) {
+            int slide = tabs.slide();
+            header.layoutInSidebar(listX + MARGIN + slide, listX + sidebarWidth + slide, top + 2, shown && !tabs.collapsed());
+        } else {
+            int controls = header.layout(MARGIN, rowRight, rowY, shown);
+            tabs.placeRow(MARGIN, rowY, controls - MARGIN, x + width / 2);
+        }
         tabs.show(shown);
         infoCard.place(dock);
+    }
+
+    /** Width of the rows in a list of the given width, see ServerSelectionListMixin. */
+    public static int rowWidth(int listWidth) {
+        return Math.min(VANILLA_ROW_WIDTH, listWidth - ROW_SIDE_ROOM);
     }
 
     private void adjustWallpaper(String tab, Styled style) {
@@ -174,6 +223,16 @@ public final class ServerListUi implements UiContext {
         tabs.selectTab(tab);
         wallpaper.start(tab, style, MARGIN, listY + 2);
         relayout();
+    }
+
+    /** Called every frame before the widgets are drawn. */
+    public void frame() {
+        tabs.frame();
+    }
+
+    /** Called on every pointer move, also while dragging. */
+    public void pointerMoved(double x, double y) {
+        tabs.pointerMoved(x, y);
     }
 
     public void tick() {
@@ -188,6 +247,7 @@ public final class ServerListUi implements UiContext {
     }
 
     public void openSearch() {
+        tabs.expand();
         header.openSearch();
     }
 
@@ -255,6 +315,19 @@ public final class ServerListUi implements UiContext {
             infoCard.open(entry.getServerData());
             return true;
         }
+        if (pointer.isRight() && entry != null && selection.contains(entry.getServerData())) {
+            serverMenu.openForSelection(selection.shown(list()), (int) pointer.x(), (int) pointer.y());
+            return true;
+        }
+        if (pointer.isLeft() && entry != null && (pointer.shift() || pointer.control())) {
+            // Also keeps vanilla from joining on a double click or a click on the icon
+            selection.extend(list(), entry.getServerData(), pointer.shift());
+            return true;
+        }
+        if (pointer.isLeft() && entry != null) {
+            if (selection.contains(entry.getServerData())) selectOnlyOnRelease = entry.getServerData();
+            else selection.single(entry.getServerData());
+        }
         if (pointer.isRight() && entry != null) {
             list().setSelected(entry);
             serverMenu.open(entry.getServerData(), (int) pointer.x(), (int) pointer.y());
@@ -273,13 +346,18 @@ public final class ServerListUi implements UiContext {
     public boolean drag(Pointer pointer) {
         if (dividers.isDragging()) return dividers.drag(pointer);
         if (wallpaper.drag(pointer)) return true;
+        if (tabs.drag(pointer)) return true;
         return dragging.drag(pointer);
     }
 
     public boolean release(Pointer pointer) {
         if (wallpaper.release()) return true;
         if (dividers.isDragging()) return dividers.release();
-        return dragging.release();
+        if (tabs.release()) return true;
+        boolean dropped = dragging.release();
+        if (!dropped && selectOnlyOnRelease != null) selection.single(selectOnlyOnRelease);
+        selectOnlyOnRelease = null;
+        return dropped;
     }
 
     /** @return true if the key was used and vanilla must not handle it */
@@ -292,6 +370,10 @@ public final class ServerListUi implements UiContext {
         if (wallpaper.key(key) || dividers.key(key) || tabs.key(key)) return true;
         if (menu != null && key == Key.ESCAPE) {
             closeMenu();
+            return true;
+        }
+        if (key == Key.ESCAPE && selection.isMulti() && !hook.serverlistplus$searchBox().isFocused()) {
+            selection.clear();
             return true;
         }
         return header.key(key);

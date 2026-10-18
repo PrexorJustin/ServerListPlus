@@ -65,6 +65,28 @@ class StoreTest {
     }
 
     @Test
+    void moveFolderTo() {
+        Store store = new Store();
+        Folder a = new Folder("A");
+        Folder b = new Folder("B");
+        Folder c = new Folder("C");
+        store.folders().addAll(List.of(a, b, c));
+
+        store.moveFolderTo(a.id(), 3);
+        assertEquals(List.of(b, c, a), store.folders(), "to the end");
+        store.moveFolderTo(a.id(), 0);
+        assertEquals(List.of(a, b, c), store.folders(), "to the start");
+        store.moveFolderTo(a.id(), 2);
+        assertEquals(List.of(b, a, c), store.folders(), "before C");
+        store.moveFolderTo(c.id(), 1);
+        assertEquals(List.of(b, c, a), store.folders(), "before A");
+        store.moveFolderTo(c.id(), 1);
+        assertEquals(List.of(b, c, a), store.folders(), "onto its own place");
+        store.moveFolderTo(c.id(), 2);
+        assertEquals(List.of(b, c, a), store.folders(), "right after itself");
+    }
+
+    @Test
     void folderNamedIgnoresCase() {
         Store store = new Store();
         Folder folder = new Folder("Friends");

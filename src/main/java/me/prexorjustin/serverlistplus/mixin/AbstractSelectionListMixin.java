@@ -27,6 +27,8 @@ public abstract class AbstractSelectionListMixin {
         if (!((Object) this instanceof ServerSelectionList list)) return;
         serverlistplus$keepRowsInPlace(list);
         MultiplayerScreenHook screen = (MultiplayerScreenHook) ((ServerSelectionListHook) list).serverlistplus$screen();
+        // The list is drawn before the widgets on top of it, so they can still be moved for this frame
+        screen.serverlistplus$frame();
         Wallpapers.draw(new Gfx(graphics), list.getX(), list.getY(), list.getWidth(), list.getHeight(), screen.serverlistplus$servers());
     }
 

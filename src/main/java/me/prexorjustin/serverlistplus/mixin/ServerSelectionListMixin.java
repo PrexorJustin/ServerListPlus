@@ -2,6 +2,7 @@ package me.prexorjustin.serverlistplus.mixin;
 
 import me.prexorjustin.serverlistplus.ServerListPlus;
 import me.prexorjustin.serverlistplus.bridge.MultiplayerScreenHook;
+import me.prexorjustin.serverlistplus.bridge.ServerEntryHook;
 import me.prexorjustin.serverlistplus.bridge.ServerKeys;
 import me.prexorjustin.serverlistplus.bridge.ServerSelectionListHook;
 import me.prexorjustin.serverlistplus.bridge.ServerView;
@@ -9,6 +10,7 @@ import me.prexorjustin.serverlistplus.core.style.Styled;
 import me.prexorjustin.serverlistplus.core.view.DividerLayout;
 import me.prexorjustin.serverlistplus.ui.serverlist.DividerEntry;
 import me.prexorjustin.serverlistplus.ui.serverlist.HiddenSectionEntry;
+import me.prexorjustin.serverlistplus.ui.serverlist.ServerListUi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
@@ -30,9 +32,6 @@ import java.util.List;
 public abstract class ServerSelectionListMixin extends ObjectSelectionList<ServerSelectionList.Entry> implements ServerSelectionListHook {
     @Unique
     private static final int DIVIDER_COLOR = 0xFFA0A0A0;
-    /** Room a row leaves at the sides of the list for the scroll bar. */
-    @Unique
-    private static final int ROW_SIDE_ROOM = 30;
 
     @Shadow
     @Final
@@ -70,7 +69,7 @@ public abstract class ServerSelectionListMixin extends ObjectSelectionList<Serve
      */
     @Inject(method = "getRowWidth", at = @At("RETURN"), cancellable = true)
     private void serverlistplus$fitRows(CallbackInfoReturnable<Integer> cir) {
-        int room = this.getWidth() - ROW_SIDE_ROOM;
+        int room = this.getWidth() - ServerListUi.ROW_SIDE_ROOM;
         if (room < cir.getReturnValueI()) cir.setReturnValue(room);
     }
 
@@ -84,6 +83,8 @@ public abstract class ServerSelectionListMixin extends ObjectSelectionList<Serve
         var query = hook.serverlistplus$query();
         ServerKeys.index(servers);
         serverlistplus$arrangement = ServerView.arrange(onlineServers, query, hook.serverlistplus$hiddenExpanded());
+        // Only the shown rows: a filtered out one releases its icon texture, which a shown row of the same address shares
+        for (ServerSelectionList.OnlineServerEntry entry : onlineServers) ((ServerEntryHook) entry).serverlistplus$loadIcon();
         serverlistplus$rows = ServerView.withDividers(serverlistplus$arrangement.visible(), query);
     }
 

@@ -36,6 +36,8 @@ import net.minecraft.client.gui.screens.Screen;
 *///?}
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
+import java.util.Arrays;
+
 @Mixin(ServerSelectionList.OnlineServerEntry.class)
 public abstract class OnlineServerEntryMixin implements ServerEntryHook {
     @Unique
@@ -54,6 +56,14 @@ public abstract class OnlineServerEntryMixin implements ServerEntryHook {
     private ServerData serverData;
 
     @Shadow
+    private byte[] lastIconBytes;
+
+    @Shadow
+    private boolean uploadServerIcon(byte[] iconBytes) {
+        throw new AssertionError();
+    }
+
+    @Shadow
     private void refreshStatus() {
         throw new AssertionError();
     }
@@ -67,6 +77,13 @@ public abstract class OnlineServerEntryMixin implements ServerEntryHook {
     @Override
     public void serverlistplus$refreshStatus() {
         refreshStatus();
+    }
+
+    /** The same as vanilla does when drawing the row, only before its first frame. */
+    @Override
+    public void serverlistplus$loadIcon() {
+        byte[] iconBytes = serverData.getIconBytes();
+        if (!Arrays.equals(iconBytes, lastIconBytes) && uploadServerIcon(iconBytes)) lastIconBytes = iconBytes;
     }
 
     @Override
@@ -242,6 +259,36 @@ public abstract class OnlineServerEntryMixin implements ServerEntryHook {
     /*@Unique
     private static final String RENDER_METHOD = "render";
     *///?}
+
+    //? if >=26.1 {
+    @Inject(method = "extractContent", at = @At("HEAD"))
+    private void serverlistplus$multiSelection(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float a, CallbackInfo ci) {
+        serverlistplus$drawMultiSelection(new Gfx(graphics));
+    }
+    //?} elif >=1.21.9 {
+    /*@Inject(method = "renderContent", at = @At("HEAD"))
+    private void serverlistplus$multiSelection(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float partialTick, CallbackInfo ci) {
+        serverlistplus$drawMultiSelection(new Gfx(graphics));
+    }
+    *///?} else {
+    /*@Inject(method = "render", at = @At("HEAD"))
+    private void serverlistplus$multiSelection(GuiGraphicsExtractor graphics, int index, int top, int left, int width, int height,
+                                               int mouseX, int mouseY, boolean hovered, float partialTick, CallbackInfo ci) {
+        serverlistplus$drawMultiSelection(new Gfx(graphics));
+    }
+    *///?}
+
+    /** Further selected rows get the frame vanilla draws around its selected row, before their content. */
+    @Unique
+    private void serverlistplus$drawMultiSelection(Gfx gfx) {
+        MultiplayerScreenHook hook = (MultiplayerScreenHook) screen;
+        ServerSelectionList list = hook.serverlistplus$list();
+        ServerSelectionList.Entry self = (ServerSelectionList.Entry) (Object) this;
+        if (ServerListBridge.isDrawingMoved() || list.getSelected() == self || !hook.serverlistplus$isMultiSelected(serverData)) return;
+        int[] box = ServerListBridge.rowBox(list, self);
+        gfx.fill(box[0], box[1], box[2], box[3], list.isFocused() ? 0xFFFFFFFF : 0xFF808080);
+        gfx.fill(box[0] + 1, box[1] + 1, box[2] - 1, box[3] - 1, 0xFF000000);
+    }
 
     //? if >=26.1 {
     @Inject(method = "extractContent", at = @At("RETURN"))

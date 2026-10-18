@@ -48,6 +48,11 @@ interface UiContext {
     /** Opens a right-click menu, closing any other one. */
     void openMenu(List<ContextMenu.Item> items, int x, int y);
 
+    boolean menuOpen();
+
+    /** Servers selected together with Shift or Ctrl/Cmd + click. */
+    ServerSelection selection();
+
     /**
      * Vanilla focuses the clicked widget after a click, so a text field opened by that click
      * would lose the focus again. This one gets it once vanilla is done with the click.

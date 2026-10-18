@@ -11,6 +11,7 @@ import me.prexorjustin.serverlistplus.core.sort.SortMode;
 import me.prexorjustin.serverlistplus.ui.widget.ContextMenu;
 import me.prexorjustin.serverlistplus.ui.widget.Glyph;
 import me.prexorjustin.serverlistplus.ui.widget.IconButton;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
@@ -20,20 +21,31 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Search, sort and settings at the right end of the tab row. The search is an icon that turns
- * into a field when clicked and back into the icon once it is left empty.
+ * Search and settings (which also holds the sort order) at the right end of the tab row. The search is an icon that turns
+ * into a field when clicked and back into the icon once it is left empty. At the top of the tab
+ * sidebar they fill its width instead, with the search field always open.
  */
 final class HeaderRow {
+    private static final Component HINT = Component.translatable("serverlistplus.search.hint")
+        .withStyle(ChatFormatting.ITALIC, ChatFormatting.GRAY);
+    private static final Component SHORT_HINT = Component.translatable("serverlistplus.search.hint_short")
+        .withStyle(ChatFormatting.ITALIC, ChatFormatting.GRAY);
+    /** Room the field's border and padding take from its text. */
+    private static final int SEARCH_TEXT_INSET = 8;
     private static final int GAP = 2;
     private static final int SEARCH_MIN_WIDTH = 80;
     private static final int SEARCH_MAX_WIDTH = 150;
+    private static final int SIDEBAR_SEARCH_MIN_WIDTH = 64;
+    /** The sidebar is at least this wide, so the search field above it stays usable. */
+    static final int SIDEBAR_MIN_WIDTH = SIDEBAR_SEARCH_MIN_WIDTH + GAP + IconButton.SIZE;
 
     private final UiContext ui;
     private final IconButton searchButton;
-    private final IconButton sortButton;
     private final IconButton settingsButton;
     /** The search field is open instead of its icon: while it is in use or holds a search. */
     private boolean searchOpen;
+    /** At the top of the sidebar: the search field stays open, even when empty. */
+    private boolean inSidebar;
     private boolean tooltipsShown = true;
 
     HeaderRow(UiContext ui) {
@@ -42,10 +54,12 @@ final class HeaderRow {
             openSearch();
             ui.focusAfterClick(search());
         }, () -> !ui.hook().serverlistplus$query().isEmpty());
-        this.sortButton = new IconButton(Glyph.SORT, Component.empty(), this::openSortMenu, () -> ServerView.sortMode() != SortMode.MANUAL);
-        this.settingsButton = new IconButton(Glyph.SETTINGS, Component.translatable("serverlistplus.settings"), this::openSettingsMenu, () -> false);
+        // Highlighted while a sort order is active, since that is set in its menu
+        this.settingsButton = new IconButton(Glyph.SETTINGS, Component.translatable("serverlistplus.settings"), this::openSettingsMenu,
+            () -> ServerView.sortMode() != SortMode.MANUAL);
         updateTooltips();
-        for (IconButton button : List.of(searchButton, sortButton, settingsButton)) ui.hook().serverlistplus$add(button);
+        // At the top of the sidebar they lie on the list, so they must get the clicks there first
+        for (IconButton button : List.of(searchButton, settingsButton)) ui.hook().serverlistplus$addInFront(button);
         searchOpen = !ui.hook().serverlistplus$search().isEmpty();
     }
 
@@ -61,14 +75,12 @@ final class HeaderRow {
      * @return where the controls start, so the tabs end before it
      */
     int layout(int left, int right, int y, boolean shown) {
-        int x = right;
-        for (IconButton button : List.of(settingsButton, sortButton)) {
-            x -= IconButton.SIZE;
-            button.setPosition(x, y);
-            button.visible = button.active = shown;
-            x -= GAP;
-        }
+        // Coming from the sidebar, an empty search goes back to being the icon
+        if (inSidebar) searchOpen = !search().getValue().isEmpty();
+        inSidebar = false;
+        int x = placeIcons(right, y, shown);
         EditBox search = search();
+        search.setHint(HINT);
         search.setVisible(shown && searchOpen);
         searchButton.visible = searchButton.active = shown && !searchOpen;
         if (searchOpen) {
@@ -79,6 +91,31 @@ final class HeaderRow {
             x -= IconButton.SIZE;
             searchButton.setPosition(x, y);
         }
+        return x - GAP;
+    }
+
+    /**
+     * Places settings at {@code right} and the open search field left of it, from
+     * {@code left}: the top row of the tab sidebar. A narrow field gets the shorter hint.
+     */
+    void layoutInSidebar(int left, int right, int y, boolean shown) {
+        inSidebar = true;
+        searchOpen = true;
+        int x = placeIcons(right, y, shown);
+        searchButton.visible = searchButton.active = false;
+        EditBox search = search();
+        int width = Math.max(0, x - left);
+        search.setHint(ui.font().width(HINT) <= width - SEARCH_TEXT_INSET ? HINT : SHORT_HINT);
+        search.setVisible(shown);
+        search.setRectangle(width, 20, left, y);
+    }
+
+    /** Places settings at {@code right}; returns where the next control ends. */
+    private int placeIcons(int right, int y, boolean shown) {
+        int x = right;
+        x -= IconButton.SIZE;
+        settingsButton.setPosition(x, y);
+        settingsButton.visible = settingsButton.active = shown;
         return x - GAP;
     }
 
@@ -96,13 +133,13 @@ final class HeaderRow {
 
     void tick() {
         EditBox search = search();
-        if (searchOpen && !search.isFocused() && search.getValue().isEmpty()) closeSearch();
+        if (searchOpen && !inSidebar && !search.isFocused() && search.getValue().isEmpty()) closeSearch();
     }
 
     /** Clicking empty space doesn't take the focus away from a text field, so an empty search is closed here. */
     void pressAnywhere(Pointer pointer) {
         EditBox search = search();
-        if (!searchOpen || search.isMouseOver(pointer.x(), pointer.y()) || !search.getValue().isEmpty()) return;
+        if (!searchOpen || inSidebar || search.isMouseOver(pointer.x(), pointer.y()) || !search.getValue().isEmpty()) return;
         if (search.isFocused()) ui.hook().serverlistplus$focus(null);
         closeSearch();
     }
@@ -112,7 +149,7 @@ final class HeaderRow {
         EditBox search = search();
         if (key != Key.ESCAPE || !searchOpen || !search.isFocused() || !search.getValue().isEmpty()) return false;
         ui.hook().serverlistplus$focus(null);
-        closeSearch();
+        if (!inSidebar) closeSearch();
         return true;
     }
 
@@ -126,28 +163,27 @@ final class HeaderRow {
         updateTooltips();
     }
 
-    /** The sort tooltip names the current order, so it changes with it. */
+    /** The settings tooltip names an active sort order, so it changes with it. */
     void updateTooltips() {
         searchButton.setTooltip(tooltip(Component.translatable("serverlistplus.search.open")));
-        sortButton.setTooltip(tooltip(Component.translatable("serverlistplus.sort", sortLabel(ServerView.sortMode()))));
-        settingsButton.setTooltip(tooltip(Component.translatable("serverlistplus.settings")));
+        SortMode sort = ServerView.sortMode();
+        settingsButton.setTooltip(tooltip(sort == SortMode.MANUAL ? Component.translatable("serverlistplus.settings")
+            : Component.translatable("serverlistplus.settings.sorted", sortLabel(sort))));
     }
 
     private Tooltip tooltip(Component text) {
         return tooltipsShown ? Tooltip.create(text) : null;
     }
 
-    private void openSortMenu(IconButton button) {
+    private List<ContextMenu.Item> sortItems() {
         List<ContextMenu.Item> items = new ArrayList<>();
-        items.add(ContextMenu.Item.title(Component.translatable("serverlistplus.sort.title")));
-        items.add(ContextMenu.Item.separator());
         for (SortMode mode : SortMode.values()) {
             items.add(ContextMenu.Item.action(sortLabel(mode), () -> ui.hook().serverlistplus$setSort(mode))
                 .checked(mode == ServerView.sortMode()));
         }
         items.add(ContextMenu.Item.separator());
         items.add(ContextMenu.Item.title(Component.translatable("serverlistplus.sort.pinned_first")));
-        ui.openMenu(items, button.getX(), button.getBottom() + 2);
+        return items;
     }
 
     private void openSettingsMenu(IconButton button) {
@@ -155,6 +191,7 @@ final class HeaderRow {
         List<ContextMenu.Item> items = new ArrayList<>();
         items.add(ContextMenu.Item.title(Component.translatable("serverlistplus.name")));
         items.add(ContextMenu.Item.separator());
+        items.add(ContextMenu.Item.submenu(Component.translatable("serverlistplus.sort", sortLabel(ServerView.sortMode())), sortItems()));
 
         List<ContextMenu.Item> details = new ArrayList<>();
         for (DetailsMode mode : DetailsMode.values()) {
@@ -185,6 +222,12 @@ final class HeaderRow {
                 ui.tabs().scrollIntoView(ServerView.tab());
             }).checked(layout == view.tabLayout()));
         }
+        layouts.add(ContextMenu.Item.separator());
+        layouts.add(ContextMenu.Item.action(Component.translatable("serverlistplus.tab_layout.auto_hide"), () -> {
+            view.setAutoHideSidebar(!view.autoHideSidebar());
+            ServerListPlus.save();
+            ui.relayout();
+        }).checked(view.autoHideSidebar()));
         items.add(ContextMenu.Item.submenu(Component.translatable("serverlistplus.tab_layout"), layouts));
         ui.openMenu(items, button.getX(), button.getBottom() + 2);
     }

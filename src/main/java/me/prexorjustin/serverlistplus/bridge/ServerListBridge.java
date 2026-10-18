@@ -1,6 +1,7 @@
 package me.prexorjustin.serverlistplus.bridge;
 
 import me.prexorjustin.serverlistplus.ServerListPlus;
+import me.prexorjustin.serverlistplus.compat.Gfx;
 import me.prexorjustin.serverlistplus.core.model.Divider;
 import me.prexorjustin.serverlistplus.core.view.DividerLayout;
 import me.prexorjustin.serverlistplus.mixin.AbstractSelectionListInvoker;
@@ -102,14 +103,22 @@ public final class ServerListBridge {
 
     /** Moves a server directly before or after another one in the vanilla list and saves it. */
     public static void moveNextTo(ServerList servers, ServerData moved, ServerData target, boolean after) {
-        if (moved == target) return;
+        moveAllNextTo(servers, List.of(moved), target, after);
+    }
+
+    /**
+     * Moves servers directly before or after another one in the vanilla list, in the given order,
+     * and saves it. Does nothing if the target is one of them.
+     */
+    public static void moveAllNextTo(ServerList servers, List<ServerData> moved, ServerData target, boolean after) {
+        if (moved.contains(target)) return;
         List<ServerData> list = ((ServerListAccessor) servers).serverlistplus$serverList();
-        if (!list.remove(moved)) return;
+        if (!list.removeIf(moved::contains)) return;
         int index = list.indexOf(target);
         if (index < 0) {
-            list.add(moved);
+            list.addAll(moved);
         } else {
-            list.add(after ? index + 1 : index, moved);
+            list.addAll(after ? index + 1 : index, moved);
         }
         servers.save();
     }
@@ -149,6 +158,43 @@ public final class ServerListBridge {
     }
 
     /** Top and bottom screen coordinate of an entry's row. */
+    private static boolean drawingMoved;
+
+    /** The box vanilla draws around a selected row: x1, y1, x2, y2. */
+    public static int[] rowBox(ServerSelectionList list, ServerSelectionList.Entry entry) {
+        //? if >=1.21.9 {
+        return new int[]{entry.getX(), entry.getY(), entry.getX() + entry.getWidth(), entry.getY() + entry.getHeight()};
+        //?} else {
+        /*int[] row = rowBounds(list, entry);
+        int left = list.getX() + (list.getWidth() - list.getRowWidth()) / 2;
+        return new int[]{left, row[0] - 2, left + list.getRowWidth(), row[1] - 2};
+        *///?}
+    }
+
+    /** Draws a row's content moved by {@code dx}, {@code dy} and not hovered, e.g. for a dragged server. */
+    public static void drawRowMoved(Gfx gfx, ServerSelectionList list, ServerSelectionList.Entry entry, int dx, int dy) {
+        // Far away, so nothing in the row reacts to the pointer
+        int mouse = -10000;
+        drawingMoved = true;
+        gfx.push(dx, dy);
+        //? if >=26.1 {
+        entry.extractContent(gfx.raw(), mouse, mouse, false, 0);
+        //?} elif >=1.21.9 {
+        /*entry.renderContent(gfx.raw(), mouse, mouse, false, 0);*/
+        //?} else {
+        /*int index = list.children().indexOf(entry);
+        int[] row = rowBounds(list, entry);
+        if (index >= 0) entry.render(gfx.raw(), index, row[0], list.getRowLeft(), list.getRowWidth(), row[1] - row[0] - 4, mouse, mouse, false, 0);
+        *///?}
+        gfx.pop();
+        drawingMoved = false;
+    }
+
+    /** While {@link #drawRowMoved} draws, the row brings its own frame. */
+    public static boolean isDrawingMoved() {
+        return drawingMoved;
+    }
+
     public static int[] rowBounds(ServerSelectionList list, ServerSelectionList.Entry entry) {
         int index = list.children().indexOf(entry);
         AbstractSelectionListInvoker invoker = (AbstractSelectionListInvoker) list;

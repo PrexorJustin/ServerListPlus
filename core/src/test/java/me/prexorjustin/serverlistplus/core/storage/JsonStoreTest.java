@@ -52,6 +52,7 @@ class JsonStoreTest {
         store.view().setDetails(DetailsMode.HOVER);
         store.view().setAutoRefreshSeconds(30);
         store.view().setTabLayout(TabLayout.SIDEBAR);
+        store.view().setAutoHideSidebar(true);
         Divider divider = new Divider(folder.id(), "play.example.com");
         divider.setColor(Palette.byKey("teal").orElseThrow());
         store.dividers().add(divider);
@@ -75,6 +76,7 @@ class JsonStoreTest {
         assertEquals(DetailsMode.HOVER, loaded.view().details());
         assertEquals(30, loaded.view().autoRefreshSeconds());
         assertEquals(TabLayout.SIDEBAR, loaded.view().tabLayout());
+        assertTrue(loaded.view().autoHideSidebar());
         assertEquals(Palette.byKey("teal"), java.util.Optional.ofNullable(loaded.dividers().getFirst().color()));
     }
 
@@ -129,6 +131,7 @@ class JsonStoreTest {
         Files.writeString(json.file(), "{\"version\": 1, \"view\": {}}");
 
         assertEquals(TabLayout.TOP, json.load().store().view().tabLayout());
+        assertFalse(json.load().store().view().autoHideSidebar());
     }
 
     @Test

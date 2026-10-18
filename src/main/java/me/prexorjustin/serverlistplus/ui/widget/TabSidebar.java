@@ -34,6 +34,7 @@ public final class TabSidebar extends TabStrip {
     private static final int DROP_BAD = 0xFFFF5555;
     private static final int ARROW_DISABLED = 0xFF505050;
     private static final int EDITING_OUTLINE = 0x80FFFFFF;
+    private static final Component NEW_FOLDER = Component.translatable("serverlistplus.folder.new");
 
     private final Font font;
     private final Listener listener;
@@ -97,9 +98,9 @@ public final class TabSidebar extends TabStrip {
         return tab.count() >= 0 ? String.valueOf(tab.count()) : "";
     }
 
-    /** Wide enough for the longest tab, within {@link #MIN_WIDTH} and {@link #MAX_WIDTH}. */
+    /** Wide enough for the longest tab and "+ New folder", within {@link #MIN_WIDTH} and {@link #MAX_WIDTH}. */
     public int preferredWidth() {
-        int widest = 0;
+        int widest = ACCENT_WIDTH + PAD + font.width(NEW_TAB) + ICON_GAP + font.width(NEW_FOLDER) + PAD;
         for (Tab tab : tabs) {
             widest = Math.max(widest, ACCENT_WIDTH + PAD + iconWidth(tab) + font.width(tab.label()) + 6 + font.width(countText(tab)) + PAD);
         }
@@ -213,8 +214,13 @@ public final class TabSidebar extends TabStrip {
                 continue;
             }
             if (slot.id().equals(NEW_TAB)) {
+                // "+" in the icon column, the label lined up with the tab names; dimmer than them, as it isn't a tab
                 if (isHovered) gfx.roundedRect(slot.x(), slot.y(), slot.right(), slot.bottom(), HOVER_BG);
-                gfx.text(font, Component.literal(NEW_TAB), slot.x() + ACCENT_WIDTH + PAD, textY, isHovered ? TEXT_COLOR : TEXT_DIM);
+                int color = isHovered ? TEXT_COLOR : COUNT_COLOR;
+                int x = slot.x() + ACCENT_WIDTH + PAD;
+                gfx.text(font, Component.literal(NEW_TAB), x, textY, color);
+                x += font.width(NEW_TAB) + ICON_GAP;
+                gfx.text(font, fit(NEW_FOLDER, slot.right() - PAD - x), x, textY, color);
                 continue;
             }
 
@@ -271,8 +277,9 @@ public final class TabSidebar extends TabStrip {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (!this.isMouseOver(mouseX, mouseY) || !overflows()) return false;
-        scrollBy(scrollY > 0 ? -1 : 1);
+        if (!this.isMouseOver(mouseX, mouseY)) return false;
+        // Used even when there's nothing to scroll, so the list below doesn't scroll instead
+        if (overflows()) scrollBy(scrollY > 0 ? -1 : 1);
         return true;
     }
 }

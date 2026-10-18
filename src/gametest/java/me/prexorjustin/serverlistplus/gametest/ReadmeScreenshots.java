@@ -24,6 +24,7 @@ import net.minecraft.client.gui.screens.multiplayer.ServerSelectionList;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.ServerList;
 
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -71,7 +72,7 @@ public final class ReadmeScreenshots implements FabricClientGameTest {
         context.takeScreenshot("server-menu");
         clickAt(context, 4, 4, InputConstants.MOUSE_BUTTON_LEFT);
 
-        clickHeaderIcon(context, 2);
+        clickHeaderIcon(context, 1);
         context.takeScreenshot("settings");
         clickAt(context, 4, 4, InputConstants.MOUSE_BUTTON_LEFT);
 
@@ -171,12 +172,13 @@ public final class ReadmeScreenshots implements FabricClientGameTest {
         clickAt(context, position[0], position[1], InputConstants.MOUSE_BUTTON_RIGHT);
     }
 
-    /** Clicks one of the icons right of the tabs: 0 search, 1 sort, 2 settings. */
+    /** Clicks one of the icons right of the tabs, from the left: 0 search, 1 settings. */
     private static void clickHeaderIcon(ClientGameTestContext context, int index) {
         double[] position = context.computeOnClient(minecraft -> {
             List<IconButton> icons = minecraft.gui.screen().children().stream()
                 .filter(child -> child instanceof IconButton)
                 .map(child -> (IconButton) child)
+                .sorted(Comparator.comparingInt(IconButton::getX))
                 .toList();
             IconButton icon = icons.get(index);
             return new double[]{icon.getX() + icon.getWidth() / 2.0, icon.getY() + icon.getHeight() / 2.0};

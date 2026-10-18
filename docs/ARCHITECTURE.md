@@ -92,12 +92,13 @@ pointer. The parts share a `UiContext`:
 
 | Part | Does |
 |---|---|
-| `HeaderRow` | search, sort and settings icons with their menus |
-| `TabController` | tabs as row or sidebar, renaming in place, tab menu |
+| `HeaderRow` | search and settings icons, the settings menu with the sort order |
+| `TabController` | tabs as row or sidebar (auto-hiding), renaming in place, dragging to reorder, tab menu |
 | `ServerMenu` | right-click menu of a server |
 | `InfoCardController` | the info card with notes and tags, docked next to the list or over it |
 | `DividerController` | divider menu, renaming, dragging |
-| `ServerDragging` | dragging servers to reorder or onto tabs |
+| `ServerDragging` | dragging servers (one or all selected) to reorder or onto tabs |
+| `ServerSelection` | several servers selected with Shift or Ctrl/Cmd + click |
 | `WallpaperAdjuster` | moving and zooming a tab's background picture |
 | `StyleMenus` | color, symbol and background submenus |
 

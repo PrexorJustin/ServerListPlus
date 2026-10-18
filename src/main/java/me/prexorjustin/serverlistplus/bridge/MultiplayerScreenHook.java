@@ -35,6 +35,12 @@ public interface MultiplayerScreenHook {
     /** Adds a widget that is only drawn, on top of everything added before. */
     void serverlistplus$addOverlay(AbstractWidget widget);
 
+    /** One of several servers selected together; vanilla only draws its own selected row. */
+    boolean serverlistplus$isMultiSelected(ServerData server);
+
+    /** Called every frame while the list is drawn, before the widgets on top of it. */
+    void serverlistplus$frame();
+
     /** Adds a widget that gets clicks before everything else, also where it lies over the list. */
     void serverlistplus$addInFront(AbstractWidget widget);
 

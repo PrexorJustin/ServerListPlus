@@ -34,6 +34,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.ServerList;
 
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -125,7 +126,7 @@ public final class ServerListScreensTest implements FabricClientGameTest {
             IconButton button = minecraft.gui.screen().children().stream()
                 .filter(child -> child instanceof IconButton)
                 .map(child -> (IconButton) child)
-                .reduce((first, second) -> second) // Settings is the last of the three
+                .max(Comparator.comparingInt(IconButton::getX)) // Settings is the rightmost
                 .orElseThrow(() -> new AssertionError("no header icons"));
             return new double[]{button.getX() + button.getWidth() / 2.0, button.getY() + button.getHeight() / 2.0};
         });

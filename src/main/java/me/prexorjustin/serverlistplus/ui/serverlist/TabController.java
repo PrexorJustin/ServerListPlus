@@ -10,6 +10,7 @@ import me.prexorjustin.serverlistplus.core.model.TabLayout;
 import me.prexorjustin.serverlistplus.core.model.ViewSettings;
 import me.prexorjustin.serverlistplus.core.style.Styled;
 import me.prexorjustin.serverlistplus.ui.widget.ContextMenu;
+import me.prexorjustin.serverlistplus.ui.widget.DragGhost;
 import me.prexorjustin.serverlistplus.ui.widget.TabBar;
 import me.prexorjustin.serverlistplus.ui.widget.TabSidebar;
 import me.prexorjustin.serverlistplus.ui.widget.TabStrip;
@@ -33,13 +34,39 @@ final class TabController implements TabStrip.Listener {
     /** The sidebar is only used while the server list keeps at least this width next to it. */
     private static final int MIN_LIST_WIDTH_WITH_SIDEBAR = 330;
     private static final int TICKS_PER_COUNT_UPDATE = 20;
+    /** How long the sidebar stays out after the pointer left it. */
+    private static final int COLLAPSE_DELAY_TICKS = 6;
+    /** How long sliding in or out takes. */
+    private static final long SLIDE_NANOS = 160_000_000L;
 
     private final UiContext ui;
     private final StyleMenus styles;
     private final TabBar bar;
     private final TabSidebar sidebar;
     private boolean sidebarShown;
+    /** With auto-hide: folded away, or sliding there, until the pointer comes over its place. */
+    private boolean collapsed = true;
+    private boolean pointerInside;
+    private int collapseIn;
+    /** When the last slide started, and how far out the sidebar was then (0 to 1). */
+    private long slideStart;
+    private double slideFrom;
+    private boolean sliding;
+    /** Turning auto-hide on keeps the sidebar out until the pointer leaves it. */
+    private boolean autoHideSetting;
+    /** The sidebar with the header controls above it and the margin around it, for hovering. */
+    private int areaLeft;
+    private int areaTop;
+    private int areaRight;
     private int ticks;
+
+    /** A folder tab pressed, which becomes a drag once the pointer moved far enough. */
+    private String pressedTab;
+    private double tabPressX;
+    private double tabPressY;
+    private DragGhost tabGhost;
+    /** Where the dragged folder would go, as for {@link me.prexorjustin.serverlistplus.core.model.Store#moveFolderTo}; -1 for nowhere. */
+    private int tabDropIndex = -1;
 
     private EditBox editor;
     private String editedFolder;
@@ -51,7 +78,9 @@ final class TabController implements TabStrip.Listener {
         this.bar = new TabBar(ui.font(), this);
         this.sidebar = new TabSidebar(ui.font(), this);
         ui.hook().serverlistplus$add(bar);
-        ui.hook().serverlistplus$add(sidebar);
+        // Lies on the list's background, so it must get the clicks there first
+        ui.hook().serverlistplus$addInFront(sidebar);
+        autoHideSetting = ui.store().view().autoHideSidebar();
     }
 
     /** The tabs currently shown: the sidebar if chosen and there is room, the row otherwise. */
@@ -65,25 +94,107 @@ final class TabController implements TabStrip.Listener {
      * @return the width the sidebar takes from the list, 0 for the row
      */
     int chooseLayout(int listWidth, int margin) {
-        int width = sidebar.preferredWidth();
+        int width = sidebarWidth();
         sidebarShown = ui.store().view().tabLayout() == TabLayout.SIDEBAR
             && listWidth - width - margin >= MIN_LIST_WIDTH_WITH_SIDEBAR;
         return sidebarShown ? width + margin : 0;
     }
 
-    void placeSidebar(int x, int y, int height) {
-        sidebar.setRectangle(sidebar.preferredWidth(), height, x, y);
+    /**
+     * Places the sidebar at {@code x}, or left of it while it slides (see {@link #slide()}).
+     *
+     * @param headerTop where the header controls above the tabs start
+     */
+    void placeSidebar(int x, int y, int height, int headerTop, int margin) {
+        int width = sidebarWidth();
+        areaLeft = x - margin;
+        areaTop = headerTop;
+        areaRight = x + width + margin;
+        sidebar.setRectangle(width, height, x + slide(), y);
     }
 
-    void placeRow(int x, int y, int width) {
+    /** Folded away completely, so nothing of it is shown. */
+    boolean collapsed() {
+        return autoHides() && collapsed && openness() == 0;
+    }
+
+    private boolean autoHides() {
+        boolean setting = ui.store().view().autoHideSidebar();
+        if (setting && !autoHideSetting) {
+            collapsed = false;
+            collapseIn = COLLAPSE_DELAY_TICKS;
+            slideFrom = 1;
+        }
+        autoHideSetting = setting;
+        return sidebarShown && setting;
+    }
+
+    /** How far out the sidebar is, from 0 (folded away) to 1, eased while it slides. */
+    private double openness() {
+        double target = collapsed ? 0 : 1;
+        double t = Math.min(1, (double) (System.nanoTime() - slideStart) / SLIDE_NANOS);
+        double eased = 1 - Math.pow(1 - t, 3);
+        return slideFrom + (target - slideFrom) * eased;
+    }
+
+    /** How far the sidebar and its header controls are moved left while sliding; 0 when out. */
+    int slide() {
+        if (!autoHides()) return 0;
+        return (int) -Math.round((1 - openness()) * (areaRight - areaLeft));
+    }
+
+    private void setCollapsed(boolean collapsed) {
+        if (this.collapsed == collapsed) return;
+        slideFrom = openness();
+        slideStart = System.nanoTime();
+        this.collapsed = collapsed;
+        collapseIn = COLLAPSE_DELAY_TICKS;
+        ui.relayout();
+    }
+
+    /** Brings an auto-hidden sidebar out, e.g. to search. */
+    void expand() {
+        if (autoHides()) setCollapsed(false);
+    }
+
+    void pointerMoved(double x, double y) {
+        if (!autoHides()) return;
+        // Its whole place counts, also while it is folded away
+        pointerInside = x >= areaLeft && x < areaRight && y >= areaTop && y < sidebar.getBottom();
+        if (pointerInside) setCollapsed(false);
+    }
+
+    /** Every frame: moves the sidebar along while it slides. */
+    void frame() {
+        if (!autoHides()) return;
+        boolean moving = System.nanoTime() - slideStart < SLIDE_NANOS;
+        // One more layout after the end puts it exactly in place
+        if (moving || sliding) ui.relayout();
+        sliding = moving;
+    }
+
+    /** Stays out while it is pointed at or in use: renaming a tab, a menu, the search. */
+    private boolean keepsOpen() {
+        EditBox search = ui.hook().serverlistplus$searchBox();
+        return pointerInside || editor != null || tabGhost != null || ui.menuOpen() || search.isFocused() || !search.getValue().isEmpty();
+    }
+
+    /** Wide enough for the tab names and for the search and sort/settings row above it. */
+    private int sidebarWidth() {
+        return Math.max(sidebar.preferredWidth(), HeaderRow.SIDEBAR_MIN_WIDTH);
+    }
+
+    /** @param center where the tabs are centered while they fit, usually over the rows */
+    void placeRow(int x, int y, int width, int center) {
         bar.setRectangle(Math.max(0, width), 20, x, y);
+        bar.setCenter(center);
     }
 
     /** @param shown false while something else (the wallpaper toolbar) takes the row */
     void show(boolean shown) {
         bar.visible = shown && !sidebarShown;
         bar.active = bar.visible && editor == null;
-        sidebar.visible = shown && sidebarShown;
+        sidebar.visible = shown && sidebarShown && !collapsed();
         sidebar.active = sidebar.visible && editor == null;
         if (editor != null) placeEditor();
     }
@@ -122,6 +233,10 @@ final class TabController implements TabStrip.Listener {
     /** Counts change while pings arrive (smart folders) and servers are edited elsewhere. */
     void tick() {
         if (editor != null && !editor.isFocused()) finishEditing(true);
+        if (autoHides() && !collapsed) {
+            if (keepsOpen()) collapseIn = COLLAPSE_DELAY_TICKS;
+            else if (--collapseIn <= 0) setCollapsed(true);
+        }
         if (++ticks % TICKS_PER_COUNT_UPDATE == 0) {
             update();
             ui.relayout();
@@ -131,6 +246,7 @@ final class TabController implements TabStrip.Listener {
     @Override
     public void selectTab(String id) {
         if (id.equals(ServerView.tab())) return;
+        ui.selection().clear();
         ui.store().view().setTab(id);
         ServerListPlus.save();
         ServerView.showFromTop(ui.list(), ui.servers());
@@ -307,6 +423,91 @@ final class TabController implements TabStrip.Listener {
     /** A click elsewhere keeps what was typed. */
     void pressAnywhere(Pointer pointer) {
         if (editor != null && !editor.isMouseOver(pointer.x(), pointer.y())) finishEditing(true);
+        pressedTab = null;
+        if (!pointer.isLeft() || editor != null) return;
+        String id = strip().tabAt(pointer.x(), pointer.y());
+        // "All" stays first, so only folders can be moved
+        if (id != null && ui.store().folder(id).isPresent()) {
+            pressedTab = id;
+            tabPressX = pointer.x();
+            tabPressY = pointer.y();
+        }
+    }
+
+    /** Dragging a folder tab between the others. */
+    boolean drag(Pointer pointer) {
+        if (pressedTab == null || !pointer.isLeft()) return false;
+        if (tabGhost == null) {
+            if (Math.hypot(pointer.x() - tabPressX, pointer.y() - tabPressY) < ServerDragging.THRESHOLD) return false;
+            Folder folder = ui.store().folder(pressedTab).orElse(null);
+            if (folder == null) {
+                pressedTab = null;
+                return false;
+            }
+            tabGhost = new DragGhost(ui.font(), Component.literal(folder.name()));
+            ui.hook().serverlistplus$addOverlay(tabGhost);
+        }
+        updateTabDrop(pointer.x(), pointer.y());
+        return true;
+    }
+
+    /** The folder goes before the tab whose middle is past the pointer, or after the last one. */
+    private void updateTabDrop(double x, double y) {
+        TabStrip strip = strip();
+        List<TabStrip.Slot> folders = strip.slots().stream().filter(slot -> ui.store().folder(slot.id()).isPresent()).toList();
+        tabDropIndex = -1;
+        tabGhost.setMarker(null);
+        int near = 12;
+        boolean nearTabs = x >= strip.getX() - near && x < strip.getRight() + near && y >= strip.getY() - near && y < strip.getBottom() + near;
+        tabGhost.setValid(nearTabs && !folders.isEmpty());
+        if (!nearTabs || folders.isEmpty()) return;
+
+        boolean vertical = strip.vertical();
+        TabStrip.Slot before = null;
+        for (TabStrip.Slot slot : folders) {
+            double middle = vertical ? slot.y() + slot.height() / 2.0 : slot.x() + slot.width() / 2.0;
+            if ((vertical ? y : x) < middle) {
+                before = slot;
+                break;
+            }
+        }
+        TabStrip.Slot edge = before != null ? before : folders.getLast();
+        int index = folderIndex(edge.id());
+        tabDropIndex = before != null ? index : index + 1;
+        // A line in the gap between two tabs
+        if (vertical) {
+            int lineY = before != null ? edge.y() : edge.bottom() + 1;
+            tabGhost.setMarker(new int[]{edge.x(), lineY - 1, edge.right(), lineY + 1});
+        } else {
+            int lineX = before != null ? edge.x() - 1 : edge.right() + 1;
+            tabGhost.setMarker(new int[]{lineX - 1, edge.y() + 2, lineX + 1, edge.bottom() - 2});
+        }
+    }
+
+    private int folderIndex(String id) {
+        List<Folder> folders = ui.store().folders();
+        for (int i = 0; i < folders.size(); i++) {
+            if (folders.get(i).id().equals(id)) return i;
+        }
+        return folders.size();
+    }
+
+    /** @return true if a tab was being dragged */
+    boolean release() {
+        String moved = pressedTab;
+        pressedTab = null;
+        if (tabGhost == null) return false;
+        ui.hook().serverlistplus$remove(tabGhost);
+        tabGhost = null;
+        if (moved != null && tabDropIndex >= 0) {
+            ui.store().moveFolderTo(moved, tabDropIndex);
+            ServerListPlus.save();
+            update();
+            ui.relayout();
+            strip().scrollIntoView(moved);
+        }
+        tabDropIndex = -1;
+        return true;
     }
 
     /** Enter keeps the new name, Escape restores the old one. */

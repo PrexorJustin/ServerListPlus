@@ -138,6 +138,16 @@ public abstract class JoinMultiplayerScreenMixin extends Screen implements Multi
     }
 
     @Override
+    public boolean serverlistplus$isMultiSelected(ServerData server) {
+        return serverlistplus$ui != null && serverlistplus$ui.isMultiSelected(server);
+    }
+
+    @Override
+    public void serverlistplus$frame() {
+        if (serverlistplus$ui != null) serverlistplus$ui.frame();
+    }
+
+    @Override
     public void serverlistplus$add(AbstractWidget widget) {
         this.addRenderableWidget(widget);
     }
@@ -187,7 +197,9 @@ public abstract class JoinMultiplayerScreenMixin extends Screen implements Multi
         box.setValue(serverlistplus$search);
         box.setHint(SEARCH_HINT);
         box.setResponder(this::serverlistplus$onSearchChanged);
-        serverlistplus$searchBox = this.addRenderableWidget(box);
+        serverlistplus$searchBox = box;
+        // At the top of the tab sidebar it lies on the list, so it must get the clicks there first
+        serverlistplus$addInFront(box);
 
         serverlistplus$ui = new ServerListUi(this);
         serverlistplus$ui.layoutList();
@@ -254,6 +266,11 @@ public abstract class JoinMultiplayerScreenMixin extends Screen implements Multi
         if (ServerView.SORTER.isSorted(shown, mode) && ServerView.SORTER.isSorted(hidden, mode)) return;
         serverlistplus$lastLiveSort = now;
         ServerView.refresh(serverSelectionList, servers);
+    }
+
+    @Inject(method = "onSelectedChange", at = @At("TAIL"))
+    private void serverlistplus$selectionChanged(CallbackInfo ci) {
+        if (serverlistplus$ui != null) serverlistplus$ui.selectedChanged();
     }
 
     /** A divider can be reached with the arrow keys; there is nothing to join. */
@@ -355,6 +372,12 @@ public abstract class JoinMultiplayerScreenMixin extends Screen implements Multi
 
     // ServerListPlus sees every mouse event before vanilla
     @Override
+    public void mouseMoved(double mouseX, double mouseY) {
+        if (serverlistplus$ui != null) serverlistplus$ui.pointerMoved(mouseX, mouseY);
+        super.mouseMoved(mouseX, mouseY);
+    }
+
+    @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (serverlistplus$ui != null && serverlistplus$ui.scroll(mouseX, mouseY, scrollY)) return true;
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
@@ -363,7 +386,11 @@ public abstract class JoinMultiplayerScreenMixin extends Screen implements Multi
     //? if >=1.21.9 {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (serverlistplus$ui != null && serverlistplus$ui.press(new Pointer(event.x(), event.y(), event.button()))) return true;
+        //? if >=26.1 {
+        boolean control = event.hasControlDownWithQuirk();
+        //?} else
+        /*boolean control = event.hasControlDown();*/
+        if (serverlistplus$ui != null && serverlistplus$ui.press(new Pointer(event.x(), event.y(), event.button(), event.hasShiftDown(), control))) return true;
         boolean used = super.mouseClicked(event, doubleClick);
         if (serverlistplus$ui != null) serverlistplus$ui.afterClick();
         return used;
@@ -383,7 +410,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen implements Multi
     //?} else {
     /*@Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (serverlistplus$ui != null && serverlistplus$ui.press(new Pointer(mouseX, mouseY, button))) return true;
+        if (serverlistplus$ui != null && serverlistplus$ui.press(new Pointer(mouseX, mouseY, button, hasShiftDown(), hasControlDown()))) return true;
         boolean used = super.mouseClicked(mouseX, mouseY, button);
         if (serverlistplus$ui != null) serverlistplus$ui.afterClick();
         return used;

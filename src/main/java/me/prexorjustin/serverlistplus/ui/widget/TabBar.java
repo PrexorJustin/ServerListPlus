@@ -43,6 +43,7 @@ public final class TabBar extends TabStrip {
     private boolean dropValid;
     private String editing;
     private int editingTextWidth;
+    private int center;
 
     public TabBar(Font font, Listener listener) {
         super(0, 20);
@@ -53,6 +54,11 @@ public final class TabBar extends TabStrip {
     @Override
     public boolean vertical() {
         return false;
+    }
+
+    /** Where the tabs are centered while they all fit; they move aside to stay inside the bar. */
+    public void setCenter(int center) {
+        this.center = center;
     }
 
     @Override
@@ -134,8 +140,8 @@ public final class TabBar extends TabStrip {
     public List<Slot> slots() {
         List<Slot> slots = new ArrayList<>();
         if (!overflows()) {
-            // Everything fits, just center it
-            int x = this.getX() + (this.getWidth() - contentWidth()) / 2;
+            // Everything fits: centered on the given point, as far as the bar allows
+            int x = Math.clamp(center - contentWidth() / 2, this.getX(), this.getRight() - contentWidth());
             for (Tab tab : tabs) {
                 int width = tabWidth(tab);
                 slots.add(new Slot(tab.id(), x, getY(), width, getHeight()));

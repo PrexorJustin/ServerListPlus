@@ -21,6 +21,8 @@ public final class ViewSettings {
     private DetailsMode details = DetailsMode.INLINE;
     private int autoRefreshSeconds;
     private TabLayout tabLayout = TabLayout.TOP;
+    /** The sidebar folds away until the pointer comes near it. */
+    private boolean autoHideSidebar;
     private TabStyle allStyle = TabStyle.all();
 
     public SortMode sort() {
@@ -75,6 +77,14 @@ public final class ViewSettings {
 
     public void setTabLayout(TabLayout tabLayout) {
         this.tabLayout = tabLayout == null ? TabLayout.TOP : tabLayout;
+    }
+
+    public boolean autoHideSidebar() {
+        return autoHideSidebar;
+    }
+
+    public void setAutoHideSidebar(boolean autoHideSidebar) {
+        this.autoHideSidebar = autoHideSidebar;
     }
 
     public TabStyle allStyle() {

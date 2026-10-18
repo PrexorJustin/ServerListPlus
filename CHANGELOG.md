@@ -3,6 +3,26 @@
 All notable changes are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Several servers can be selected with Shift + click (a range) and Ctrl/Cmd + click (one more or
+  one less), then dragged together, dropped onto a tab, or put into folders, pinned and hidden
+  from their right-click menu.
+- Tabs can be reordered by dragging them, in the row and in the sidebar.
+- Option to auto-hide the sidebar: it slides in while the pointer is over its place.
+- A dragged server is shown as its whole row instead of only its name.
+
+### Changed
+- With the sidebar, the server list keeps its full width, so the rows stay centered under the
+  title, and the search field and settings sit at the top of the sidebar instead of above the list.
+- The tabs in the row are centered over the server list instead of the space left of the icons.
+- Sorting moved into the settings menu; the settings icon is highlighted while a sort order is active.
+- The sidebar's "+" became a "New folder" row.
+
+### Fixed
+- Server icons flickered to the default icon when switching tabs.
+
 ## [1.1.1] - 2026-10-17
 
 ### Fixed
