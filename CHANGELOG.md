@@ -6,6 +6,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- When a newer release is on Modrinth for your Minecraft version and loader, the game log says so
+  and an update icon appears next to the settings in the server list. It can be hidden until the
+  next version, and the check can be turned off in the settings.
 - Several servers can be selected with Shift + click (a range) and Ctrl/Cmd + click (one more or
   one less), then dragged together, dropped onto a tab, or put into folders, pinned and hidden
   from their right-click menu.

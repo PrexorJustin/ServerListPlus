@@ -1,10 +1,13 @@
 package me.prexorjustin.serverlistplus.ui.serverlist;
 
 import me.prexorjustin.serverlistplus.ServerListPlus;
+import me.prexorjustin.serverlistplus.UpdateCheck;
 import me.prexorjustin.serverlistplus.bridge.ServerView;
 import me.prexorjustin.serverlistplus.compat.Key;
+import me.prexorjustin.serverlistplus.compat.Links;
 import me.prexorjustin.serverlistplus.compat.Pointer;
 import me.prexorjustin.serverlistplus.core.model.DetailsMode;
+import me.prexorjustin.serverlistplus.core.model.Store;
 import me.prexorjustin.serverlistplus.core.model.TabLayout;
 import me.prexorjustin.serverlistplus.core.model.ViewSettings;
 import me.prexorjustin.serverlistplus.core.sort.SortMode;
@@ -23,7 +26,8 @@ import java.util.Locale;
 /**
  * Search and settings (which also holds the sort order) at the right end of the tab row. The search is an icon that turns
  * into a field when clicked and back into the icon once it is left empty. At the top of the tab
- * sidebar they fill its width instead, with the search field always open.
+ * sidebar they fill its width instead, with the search field always open. An update icon joins
+ * them while a newer release is available.
  */
 final class HeaderRow {
     private static final Component HINT = Component.translatable("serverlistplus.search.hint")
@@ -36,12 +40,14 @@ final class HeaderRow {
     private static final int SEARCH_MIN_WIDTH = 80;
     private static final int SEARCH_MAX_WIDTH = 150;
     private static final int SIDEBAR_SEARCH_MIN_WIDTH = 64;
-    /** The sidebar is at least this wide, so the search field above it stays usable. */
-    static final int SIDEBAR_MIN_WIDTH = SIDEBAR_SEARCH_MIN_WIDTH + GAP + IconButton.SIZE;
+    private static final int SIDEBAR_MIN_WIDTH = SIDEBAR_SEARCH_MIN_WIDTH + GAP + IconButton.SIZE;
 
     private final UiContext ui;
     private final IconButton searchButton;
     private final IconButton settingsButton;
+    private final IconButton updateButton;
+    /** The update icon has a place in the row; the check may finish after the screen opened. */
+    private boolean updateShown;
     /** The search field is open instead of its icon: while it is in use or holds a search. */
     private boolean searchOpen;
     /** At the top of the sidebar: the search field stays open, even when empty. */
@@ -57,10 +63,16 @@ final class HeaderRow {
         // Highlighted while a sort order is active, since that is set in its menu
         this.settingsButton = new IconButton(Glyph.SETTINGS, Component.translatable("serverlistplus.settings"), this::openSettingsMenu,
             () -> ServerView.sortMode() != SortMode.MANUAL);
+        this.updateButton = new IconButton(Glyph.UPDATE, Component.empty(), this::openUpdateMenu, () -> true);
         updateTooltips();
         // At the top of the sidebar they lie on the list, so they must get the clicks there first
-        for (IconButton button : List.of(searchButton, settingsButton)) ui.hook().serverlistplus$addInFront(button);
+        for (IconButton button : List.of(searchButton, settingsButton, updateButton)) ui.hook().serverlistplus$addInFront(button);
         searchOpen = !ui.hook().serverlistplus$search().isEmpty();
+    }
+
+    /** The sidebar is at least this wide, so the search field above it stays usable next to the icons. */
+    static int sidebarMinWidth() {
+        return UpdateCheck.pending() != null ? SIDEBAR_MIN_WIDTH + IconButton.SIZE + GAP : SIDEBAR_MIN_WIDTH;
     }
 
     private EditBox search() {
@@ -110,13 +122,18 @@ final class HeaderRow {
         search.setRectangle(width, 20, left, y);
     }
 
-    /** Places settings at {@code right}; returns where the next control ends. */
+    /** Places settings at {@code right} and the update icon left of it; returns where the next control ends. */
     private int placeIcons(int right, int y, boolean shown) {
+        updateShown = UpdateCheck.pending() != null;
+        updateButton.visible = updateButton.active = false;
         int x = right;
-        x -= IconButton.SIZE;
-        settingsButton.setPosition(x, y);
-        settingsButton.visible = settingsButton.active = shown;
-        return x - GAP;
+        for (IconButton button : updateShown ? List.of(settingsButton, updateButton) : List.of(settingsButton)) {
+            x -= IconButton.SIZE;
+            button.setPosition(x, y);
+            button.visible = button.active = shown;
+            x -= GAP;
+        }
+        return x;
     }
 
     /** Turns the search icon into the field and focuses it. */
@@ -132,6 +149,10 @@ final class HeaderRow {
     }
 
     void tick() {
+        if ((UpdateCheck.pending() != null) != updateShown) {
+            updateTooltips();
+            ui.relayout();
+        }
         EditBox search = search();
         if (searchOpen && !inSidebar && !search.isFocused() && search.getValue().isEmpty()) closeSearch();
     }
@@ -169,6 +190,8 @@ final class HeaderRow {
         SortMode sort = ServerView.sortMode();
         settingsButton.setTooltip(tooltip(sort == SortMode.MANUAL ? Component.translatable("serverlistplus.settings")
             : Component.translatable("serverlistplus.settings.sorted", sortLabel(sort))));
+        String update = UpdateCheck.pending();
+        updateButton.setTooltip(update == null ? null : tooltip(Component.translatable("serverlistplus.update.available", update)));
     }
 
     private Tooltip tooltip(Component text) {
@@ -229,6 +252,28 @@ final class HeaderRow {
             ui.relayout();
         }).checked(view.autoHideSidebar()));
         items.add(ContextMenu.Item.submenu(Component.translatable("serverlistplus.tab_layout"), layouts));
+
+        Store store = ui.store();
+        items.add(ContextMenu.Item.separator());
+        items.add(ContextMenu.Item.action(Component.translatable("serverlistplus.update.check"), () -> {
+            store.setCheckUpdates(!store.checksUpdates());
+            ServerListPlus.save();
+            if (store.checksUpdates()) UpdateCheck.start();
+        }).checked(store.checksUpdates()));
+        ui.openMenu(items, button.getX(), button.getBottom() + 2);
+    }
+
+    private void openUpdateMenu(IconButton button) {
+        String version = UpdateCheck.pending();
+        if (version == null) return;
+        List<ContextMenu.Item> items = List.of(
+            ContextMenu.Item.title(Component.translatable("serverlistplus.update.available", version)),
+            ContextMenu.Item.separator(),
+            ContextMenu.Item.action(Component.translatable("serverlistplus.update.open"), () -> Links.open(ui.screen(), UpdateCheck.downloadPage())),
+            ContextMenu.Item.action(Component.translatable("serverlistplus.update.dismiss"), () -> {
+                ui.store().setDismissedUpdate(version);
+                ServerListPlus.save();
+            }));
         ui.openMenu(items, button.getX(), button.getBottom() + 2);
     }
 }

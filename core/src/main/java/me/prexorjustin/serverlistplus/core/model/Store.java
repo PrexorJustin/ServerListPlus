@@ -33,6 +33,10 @@ public final class Store {
     private List<Divider> dividers = new ArrayList<>();
     /** Addresses joined through Direct Connection, newest first, as they were typed. */
     private List<String> recentDirect = new ArrayList<>();
+    /** Whether Modrinth is asked for a newer release when the game starts. */
+    private boolean checkUpdates = true;
+    /** A release the user chose to hide; newer ones are pointed out again. */
+    private String dismissedUpdate;
 
     public int version() {
         return version;
@@ -79,6 +83,22 @@ public final class Store {
     public void forgetDirect(String address) {
         String key = AddressKey.normalize(address);
         recentDirect.removeIf(entry -> AddressKey.normalize(entry).equals(key));
+    }
+
+    public boolean checksUpdates() {
+        return checkUpdates;
+    }
+
+    public void setCheckUpdates(boolean checkUpdates) {
+        this.checkUpdates = checkUpdates;
+    }
+
+    public String dismissedUpdate() {
+        return dismissedUpdate;
+    }
+
+    public void setDismissedUpdate(String version) {
+        this.dismissedUpdate = version;
     }
 
     /** The look of a tab: a folder, or one of the built-in tabs. Null for an unknown tab. */

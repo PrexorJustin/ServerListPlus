@@ -53,6 +53,8 @@ class JsonStoreTest {
         store.view().setAutoRefreshSeconds(30);
         store.view().setTabLayout(TabLayout.SIDEBAR);
         store.view().setAutoHideSidebar(true);
+        store.setCheckUpdates(false);
+        store.setDismissedUpdate("1.2.0");
         Divider divider = new Divider(folder.id(), "play.example.com");
         divider.setColor(Palette.byKey("teal").orElseThrow());
         store.dividers().add(divider);
@@ -77,6 +79,8 @@ class JsonStoreTest {
         assertEquals(30, loaded.view().autoRefreshSeconds());
         assertEquals(TabLayout.SIDEBAR, loaded.view().tabLayout());
         assertTrue(loaded.view().autoHideSidebar());
+        assertFalse(loaded.checksUpdates());
+        assertEquals("1.2.0", loaded.dismissedUpdate());
         assertEquals(Palette.byKey("teal"), java.util.Optional.ofNullable(loaded.dividers().getFirst().color()));
     }
 
@@ -132,6 +136,17 @@ class JsonStoreTest {
 
         assertEquals(TabLayout.TOP, json.load().store().view().tabLayout());
         assertFalse(json.load().store().view().autoHideSidebar());
+    }
+
+    @Test
+    void olderFilesCheckForUpdates() throws IOException {
+        JsonStore json = jsonStore();
+        Files.createDirectories(json.file().getParent());
+        Files.writeString(json.file(), "{\"version\": 1}");
+
+        Store store = json.load().store();
+        assertTrue(store.checksUpdates());
+        assertNull(store.dismissedUpdate());
     }
 
     @Test

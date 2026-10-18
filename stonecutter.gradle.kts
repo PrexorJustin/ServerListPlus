@@ -18,6 +18,7 @@ stonecutter parameters {
     }
 
     swaps["mod_version"] = "\"${properties.get<String>("mod.version")}\";"
+    swaps["modrinth_id"] = "\"${properties.get<String>("publish.modrinth_id")}\";"
     swaps["minecraft"] = "\"${node.metadata.version}\";"
 
     replacements {

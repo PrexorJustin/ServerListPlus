@@ -39,6 +39,7 @@ public final class ServerListPlus {
         tracker = new PlaytimeTracker(store, () -> System.nanoTime() / 1_000_000, System::currentTimeMillis);
         LOGGER.info("ServerListPlus {} initialized on {} (Minecraft {})",
             VERSION, Platform.INSTANCE.loaderName(), MINECRAFT);
+        if (store.checksUpdates()) UpdateCheck.start();
     }
 
     public static Store store() {

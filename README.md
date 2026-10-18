@@ -185,6 +185,10 @@ Servers are recognised by address and name. Two entries with the same address ar
 servers (e.g. a network listed twice under different names), while playtime and last join
 are shared by address. Data of a deleted server is kept for 30 days in case it comes back.
 
+When the game starts, ServerListPlus asks the Modrinth API whether a newer release exists for
+your Minecraft version and loader. Nothing but that request is sent; turn it off under
+*Settings → Check for updates*.
+
 ## 🤝 Contributing
 
 Bug reports, ideas and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) explains

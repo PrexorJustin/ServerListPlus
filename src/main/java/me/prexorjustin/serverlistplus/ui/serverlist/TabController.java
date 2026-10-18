@@ -179,9 +179,9 @@ final class TabController implements TabStrip.Listener {
         return pointerInside || editor != null || tabGhost != null || ui.menuOpen() || search.isFocused() || !search.getValue().isEmpty();
     }
 
-    /** Wide enough for the tab names and for the search and sort/settings row above it. */
+    /** Wide enough for the tab names and for the search and icons row above it. */
     private int sidebarWidth() {
-        return Math.max(sidebar.preferredWidth(), HeaderRow.SIDEBAR_MIN_WIDTH);
+        return Math.max(sidebar.preferredWidth(), HeaderRow.sidebarMinWidth());
     }
 
     /** @param center where the tabs are centered while they fit, usually over the rows */
